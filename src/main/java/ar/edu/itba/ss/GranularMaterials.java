@@ -7,28 +7,172 @@ public class GranularMaterials {
 
     private final static double MIN_RADIUS = 0.01;
     private final static double MAX_RADIUS = 0.015;
+    private final static double MAX_DIAMETER = MAX_RADIUS*2;
     private final static double MASS = 0.01;
     private final static double KN = Math.pow(10, 5);
     private final static double KT = 2*KN;
+    private final static double GRAVITATIONAL_ACCELERATION = 9.8;
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws CloneNotSupportedException {
         CliParser.parseOptions(args);
         List<Particle> particles = createParticles();
         initSimulation(particles);
     }
 
-    private static void initSimulation(List<Particle> particles) {
-        printParticles(particles);
+    private static void initSimulation(List<Particle> particles) throws CloneNotSupportedException {
+        int iterations = 0;
+        printParticles(particles, iterations++);
 
         double dt = 0.1*Math.sqrt(MASS/KN);
+        int dt2 = 0;
+
+        List<Particle> oldParticles = new ArrayList<>();
 
         for (double t = 0; t < CliParser.time; t+=dt){
 
-            for (Particle p: particles){
-
+            for (Particle p : particles){
+                oldParticles.add(p.getClone());
             }
 
+            /* Beeman */
+            /*TODO: use beeman for speed dependant forces*/
+            updatePositions(dt, particles, oldParticles);
+
+            updateSpeeds(dt, particles);
+
+            if (dt2++ % CliParser.dt2 == 0)
+                printParticles(particles, iterations++);
+
+            oldParticles = new ArrayList<>();
         }
+    }
+
+    private static void updateSpeeds(double dt, List<Particle> particles) {
+        for (Particle p : particles) {
+
+            if ((p.position[0] > (CliParser.width/2 - CliParser.opening/2) ||
+                    p.position[0] > (CliParser.width/2 + CliParser.opening/2)) &&
+                    p.position[1] < (-CliParser.height/10) ) { /* Reset particles to the top */
+                p.position[1] = CliParser.height;
+                p.speed = new double[2];
+                p.acceleration = new double[2];
+                p.prevAcceleration = new double[2];
+                continue;
+            }
+
+            double[] newForce = forces(p, particles);
+
+            for (int i = 0; i < p.position.length; i++){
+
+                p.speed[i] = p.speed[i] + (1.0 / 3) * newForce[i] * dt +
+                        (5.0 / 6) * p.acceleration[i] * dt -
+                        (1.0 / 6) * p.prevAcceleration[i] * dt;
+            }
+
+            p.prevAcceleration = p.acceleration;
+        }
+    }
+
+    private static void updatePositions(double dt, List<Particle> particles, List<Particle> oldParticles) {
+        for (Particle p: particles){
+
+            p.acceleration = forces(p, oldParticles);
+
+            for (int i = 0; i < p.position.length; i++){
+                p.position[i] = p.position[i] + p.speed[i] * dt +
+                        (2.0 / 3) * p.acceleration[i] * Math.pow(dt, 2) -
+                        (1.0 / 6) * p.prevAcceleration[i] * Math.pow(dt, 2);
+            }
+        }
+    }
+
+    private static double[] forces(Particle p, List<Particle> particles) {
+
+        double fx = 0;
+        double fy = 0;
+
+        for (Particle neighbour : particles) { /*TODO: replace with cell index method*/
+
+            /* Lateral Walls */
+
+            if (p.position[0] < p.radius){
+                double superposition = p.radius - p.position[0];
+                double normalForce = -KN * superposition;
+                double tangentialForce = -KT * superposition * p.getSpeedModule();
+
+                double dx = 0 - p.position[0];
+                double dy = p.position[1] - p.position[1];
+
+                double mod = Math.sqrt(Math.pow(dx, 2) + Math.pow(dy, 2));
+                double ex = (dx/mod);
+                double ey = (dy/mod);
+
+                fx += normalForce * ex + tangentialForce * (-ey);
+                fy += normalForce * ey + tangentialForce * (ex);
+            }
+
+            if (p.position[0] > CliParser.width - p.radius){
+                double superposition = p.radius - (p.position[0] - CliParser.width);
+                double normalForce = -KN * superposition;
+                double tangentialForce = -KT * superposition * p.getSpeedModule();
+
+                double dx = CliParser.width - p.position[0];
+                double dy = 0;
+
+                double mod = Math.sqrt(Math.pow(dx, 2) + Math.pow(dy, 2));
+                double ex = (dx/mod);
+                double ey = (dy/mod);
+
+                fx += normalForce * ex + tangentialForce * (-ey);
+                fy += normalForce * ey + tangentialForce * (ex);
+            }
+
+            if (p.position[1] < p.radius &&
+                    (p.position[0] < (CliParser.width/2 - CliParser.opening/2) ||
+                            p.position[0] > (CliParser.width/2 + CliParser.opening/2))){
+                double superposition = p.radius - (p.position[1]);
+                double normalForce = -KN * superposition;
+                double tangentialForce = -KT * superposition * p.getSpeedModule();
+
+                double dx = 0;
+                double dy = p.position[1];
+
+                double mod = Math.sqrt(Math.pow(dx, 2) + Math.pow(dy, 2));
+                double ex = (dx/mod);
+                double ey = (dy/mod);
+
+                fx += normalForce * ex + tangentialForce * (-ey);
+                fy += normalForce * ey + tangentialForce * (ex);
+            }
+
+            /* Particle collision */
+
+//            if (p.id != neighbour.id && p.getDistanceTo(neighbour) < 2*MAX_RADIUS) {
+//
+//                double dx = neighbour.position[0] - p.position[0];
+//                double dy = neighbour.position[1] - p.position[1];
+//
+//                double mod = Math.sqrt(Math.pow(dx, 2) + Math.pow(dy, 2));
+//                double ex = (dx/mod);
+//                double ey = (dy/mod);
+//
+//                double superposition = p.radius + neighbour.radius - p.getDistanceTo(neighbour);
+//
+//                double normalForce = -KN * superposition;
+//                double[] relSpeed = p.getRelativeSpeedTo(neighbour);
+//                double tangentialForce = 0;//-KT * superposition * (relSpeed[0]*ex + relSpeed[1]*ey);
+//
+//                fx += normalForce * ex + tangentialForce * (-ey);
+//                fy += normalForce * ey + tangentialForce * (ex);
+//            }
+        }
+
+        fy -= p.mass * GRAVITATIONAL_ACCELERATION;
+
+        fx = fx/p.mass;
+        fy = fy/p.mass;
+
+        return new double[]{fx, fy};
     }
 
     private static List<Particle> createParticles() {
@@ -36,15 +180,15 @@ public class GranularMaterials {
         double width = CliParser.width;
         double height = CliParser.height;
 
-        double horizontalLimit = Math.floor(width/(MAX_RADIUS*2));
-        double verticalLimit = Math.floor(height/(MAX_RADIUS*2));
+        double horizontalLimit = Math.floor(width/MAX_DIAMETER);
+        double verticalLimit = Math.floor(height/MAX_DIAMETER);
 
         List<Particle> particles = new ArrayList<>();
-
+        int id = 1;
         for (int i = 0; i < horizontalLimit; i++){
             for (int j = 0; j < verticalLimit; j++) {
-                double[] position = {MAX_RADIUS + MAX_RADIUS*2*j, MAX_RADIUS + MAX_RADIUS*2*i};
-                Particle p = new Particle(position, randomRadius(), MASS);
+                double[] position = {MAX_RADIUS + MAX_DIAMETER*i, MAX_RADIUS + MAX_DIAMETER*j};
+                Particle p = new Particle(id++, position, randomRadius(), MASS);
                 particles.add(p);
             }
         }
@@ -56,8 +200,9 @@ public class GranularMaterials {
         return MIN_RADIUS + Math.random()*(MAX_RADIUS - MIN_RADIUS);
     }
 
-    private static void printParticles(List<Particle> particles){
+    private static void printParticles(List<Particle> particles, int iteration){
         System.out.println(particles.size());
+        System.out.println(iteration);
         for (Particle p: particles)
             System.out.println(p.position[0] + "\t" + p.position[1] + "\t" + p.radius);
     }

@@ -9,15 +9,17 @@ public class CliParser {
     static double width = 1;
     static double height = 2;
     static double opening = 0.15;
-    static double time = 100;
+    static double time = 10;
+    static double dt2;
 
     private static Options createOptions(){
         Options options = new Options();
-        options.addOption("H", "help", false, "Shows this screen.");
+        options.addOption("h", "help", false, "Shows this screen.");
         options.addOption("w", "width", true, "Width of the silo.");
         options.addOption("H", "height", true, "Height of the silo.");
         options.addOption("d", "opening", true, "Size of opening.");
         options.addOption("t", "time", true, "Total time of the simulation.");
+        options.addOption("dt2", "deltatime2", true, "Time step for the animation.");
         return options;
     }
 
@@ -45,6 +47,10 @@ public class CliParser {
 
             if (cmd.hasOption("t")) {
                 time = Double.parseDouble(cmd.getOptionValue("t"));
+            }
+
+            if (cmd.hasOption("dt2")) {
+                dt2 = Double.parseDouble(cmd.getOptionValue("dt2"));
             }
 
             if (!(height > width) && !(width > opening)){
