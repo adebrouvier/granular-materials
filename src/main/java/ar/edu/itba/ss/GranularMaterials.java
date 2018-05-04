@@ -23,7 +23,7 @@ public class GranularMaterials {
         int iterations = 0;
         printParticles(particles, iterations++);
 
-        double dt = 0.1*Math.sqrt(MASS/KN);
+        double dt = 0.01*Math.sqrt(MASS/KN);
         int dt2 = 0;
 
         List<Particle> oldParticles = new ArrayList<>();
@@ -50,15 +50,15 @@ public class GranularMaterials {
     private static void updateSpeeds(double dt, List<Particle> particles) {
         for (Particle p : particles) {
 
-            if ((p.position[0] > (CliParser.width/2 - CliParser.opening/2) ||
-                    p.position[0] > (CliParser.width/2 + CliParser.opening/2)) &&
-                    p.position[1] < (-CliParser.height/10) ) { /* Reset particles to the top */
-                p.position[1] = CliParser.height;
-                p.speed = new double[2];
-                p.acceleration = new double[2];
-                p.prevAcceleration = new double[2];
-                continue;
-            }
+//            if ((p.position[0] > (CliParser.width/2 - CliParser.opening/2) &&
+//                    p.position[0] < (CliParser.width/2 + CliParser.opening/2)) &&
+//                    p.position[1] < (-CliParser.height/10) ) { /* Reset particles to the top */
+//                p.position = newCoords(p.radius);
+//                p.speed = new double[2];
+//                p.acceleration = new double[2];
+//                p.prevAcceleration = new double[2];
+//                continue;
+//            }
 
             double[] newForce = forces(p, particles);
 
@@ -72,6 +72,15 @@ public class GranularMaterials {
             p.prevAcceleration = p.acceleration;
         }
     }
+
+    private static double[] newCoords(double radius) {
+
+        double newX = radius + Math.random()*(CliParser.width - radius);
+        double newY = CliParser.height - Math.random()*MAX_DIAMETER*3;
+
+        return new double[]{newX, newY};
+    }
+
 
     private static void updatePositions(double dt, List<Particle> particles, List<Particle> oldParticles) {
         for (Particle p: particles){
@@ -91,28 +100,33 @@ public class GranularMaterials {
         double fx = 0;
         double fy = 0;
 
-        for (Particle neighbour : particles) { /*TODO: replace with cell index method*/
-
-            /* Lateral Walls */
-
-            if (p.position[0] < p.radius){
-                double superposition = p.radius - p.position[0];
+        /* Lateral Walls */
+        /* Left wall */
+        if (p.position[0] < p.radius){
+            double superposition = p.radius - p.position[0];
+            if (superposition >= 0) {
                 double normalForce = -KN * superposition;
-                double tangentialForce = -KT * superposition * p.getSpeedModule();
+                double tangentialForce = 0;//-KT * superposition * p.getSpeedModule();
 
                 double dx = 0 - p.position[0];
-                double dy = p.position[1] - p.position[1];
+                double dy = 0;
 
                 double mod = Math.sqrt(Math.pow(dx, 2) + Math.pow(dy, 2));
-                double ex = (dx/mod);
-                double ey = (dy/mod);
+                double ex = (dx / mod);
+                double ey = (dy / mod);
 
                 fx += normalForce * ex + tangentialForce * (-ey);
                 fy += normalForce * ey + tangentialForce * (ex);
             }
+        }
 
-            if (p.position[0] > CliParser.width - p.radius){
-                double superposition = p.radius - (p.position[0] - CliParser.width);
+        /* Right wall */
+        if (p.position[0] > CliParser.width - p.radius){
+
+
+            double superposition = p.radius - (CliParser.width - p.position[0]);
+
+            if (superposition >= 0) {
                 double normalForce = -KN * superposition;
                 double tangentialForce = -KT * superposition * p.getSpeedModule();
 
@@ -120,17 +134,22 @@ public class GranularMaterials {
                 double dy = 0;
 
                 double mod = Math.sqrt(Math.pow(dx, 2) + Math.pow(dy, 2));
-                double ex = (dx/mod);
-                double ey = (dy/mod);
+                double ex = (dx / mod);
+                double ey = (dy / mod);
 
                 fx += normalForce * ex + tangentialForce * (-ey);
                 fy += normalForce * ey + tangentialForce * (ex);
             }
+        }
 
-            if (p.position[1] < p.radius &&
-                    (p.position[0] < (CliParser.width/2 - CliParser.opening/2) ||
-                            p.position[0] > (CliParser.width/2 + CliParser.opening/2))){
-                double superposition = p.radius - (p.position[1]);
+        if (p.position[1] < p.radius &&
+                (p.position[0] < (CliParser.width/2 - CliParser.opening/2) ||
+                        p.position[0] > (CliParser.width/2 + CliParser.opening/2))){
+
+            double superposition = p.radius - p.position[1];
+
+            if (superposition >= 0){
+
                 double normalForce = -KN * superposition;
                 double tangentialForce = -KT * superposition * p.getSpeedModule();
 
@@ -143,28 +162,34 @@ public class GranularMaterials {
 
                 fx += normalForce * ex + tangentialForce * (-ey);
                 fy += normalForce * ey + tangentialForce * (ex);
+
             }
+        }
 
-            /* Particle collision */
+        /* Particle collision */
+        for (Particle neighbour : particles) { /*TODO: replace with cell index method*/
 
-//            if (p.id != neighbour.id && p.getDistanceTo(neighbour) < 2*MAX_RADIUS) {
-//
-//                double dx = neighbour.position[0] - p.position[0];
-//                double dy = neighbour.position[1] - p.position[1];
-//
-//                double mod = Math.sqrt(Math.pow(dx, 2) + Math.pow(dy, 2));
-//                double ex = (dx/mod);
-//                double ey = (dy/mod);
-//
-//                double superposition = p.radius + neighbour.radius - p.getDistanceTo(neighbour);
-//
-//                double normalForce = -KN * superposition;
-//                double[] relSpeed = p.getRelativeSpeedTo(neighbour);
-//                double tangentialForce = 0;//-KT * superposition * (relSpeed[0]*ex + relSpeed[1]*ey);
-//
-//                fx += normalForce * ex + tangentialForce * (-ey);
-//                fy += normalForce * ey + tangentialForce * (ex);
-//            }
+            if (p.id != neighbour.id && p.getDistanceTo(neighbour) < 2*MAX_RADIUS) {
+
+                double superposition = p.radius + neighbour.radius - p.getDistanceTo(neighbour);
+
+                if (superposition < 0)
+                    continue;
+
+                double dx = neighbour.position[0] - p.position[0];
+                double dy = neighbour.position[1] - p.position[1];
+
+                double mod = Math.sqrt(Math.pow(dx, 2) + Math.pow(dy, 2));
+                double ex = (dx/mod);
+                double ey = (dy/mod);
+
+                double normalForce = -KN * superposition;
+                double[] relSpeed = p.getRelativeSpeedTo(neighbour);
+                double tangentialForce = 0;//-KT * superposition * (relSpeed[0]*(-ey) + relSpeed[1]*ex);
+
+                fx += normalForce * ex + tangentialForce * (-ey);
+                fy += normalForce * ey + tangentialForce * (ex);
+            }
         }
 
         fy -= p.mass * GRAVITATIONAL_ACCELERATION;
@@ -192,6 +217,12 @@ public class GranularMaterials {
                 particles.add(p);
             }
         }
+
+//        List<Particle> particles = new ArrayList<>();
+//        Particle p = new Particle(1, new double[]{CliParser.width/5, CliParser.height}, randomRadius(), MASS);
+//        particles.add(p);
+//        p = new Particle(2, new double[]{CliParser.width/5, CliParser.height/2}, randomRadius(), MASS);
+//        particles.add(p);
 
         return particles;
     }
