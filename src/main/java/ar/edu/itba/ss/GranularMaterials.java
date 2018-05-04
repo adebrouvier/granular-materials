@@ -1,6 +1,7 @@
 package ar.edu.itba.ss;
 
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 
 public class GranularMaterials {
@@ -12,6 +13,8 @@ public class GranularMaterials {
     private final static double KN = Math.pow(10, 5);
     private final static double KT = 2*KN;
     private final static double GRAVITATIONAL_ACCELERATION = 9.8;
+    private static ArrayList<LinkedList<Particle>> cells;
+    private static int matrixSize;
 
     public static void main(String[] args) throws CloneNotSupportedException {
         CliParser.parseOptions(args);
@@ -70,6 +73,15 @@ public class GranularMaterials {
             }
 
             p.prevAcceleration = p.acceleration;
+
+            int newCell = getCellNumber(p);
+            if (p.cell != newCell){
+                List<Particle> previousList = cells.get(p.cell);
+                previousList.remove(p);
+                List<Particle> nextList = cells.get(newCell);
+                nextList.add(p);
+                p.cell = newCell;
+            }
         }
     }
 
@@ -83,6 +95,7 @@ public class GranularMaterials {
                         (2.0 / 3) * p.acceleration[i] * Math.pow(dt, 2) -
                         (1.0 / 6) * p.prevAcceleration[i] * Math.pow(dt, 2);
             }
+
         }
     }
 
@@ -91,8 +104,11 @@ public class GranularMaterials {
         double fx = 0;
         double fy = 0;
 
-        for (Particle neighbour : particles) { /*TODO: replace with cell index method*/
+        for (Particle neighbour : cells.get(p.cell)) { /*TODO: replace with cell index method*/
 
+            if (neighbour.equals(p)){
+                break;
+            }
             /* Lateral Walls */
 
             if (p.position[0] < p.radius){
@@ -183,6 +199,18 @@ public class GranularMaterials {
         double horizontalLimit = Math.floor(width/MAX_DIAMETER);
         double verticalLimit = Math.floor(height/MAX_DIAMETER);
 
+        double minSize = width < (height * 11.0/10.0)  ? width : (height * 11.0/10.0);
+        int rowCellsSize = (int) Math.floor(minSize / MAX_RADIUS);
+        int cellNumber = rowCellsSize * rowCellsSize;
+        matrixSize = rowCellsSize;
+        cells = new ArrayList<>(cellNumber);
+//        areaLengthX = width / matrixSize;
+//        areaLengthY = (height * 11.0/10.0) / matrixSize;
+
+        for (int i = 0; i < cellNumber; i++){
+            cells.add(i, new LinkedList<>());
+        }
+
         List<Particle> particles = new ArrayList<>();
         int id = 1;
         for (int i = 0; i < horizontalLimit; i++){
@@ -190,6 +218,7 @@ public class GranularMaterials {
                 double[] position = {MAX_RADIUS + MAX_DIAMETER*i, MAX_RADIUS + MAX_DIAMETER*j};
                 Particle p = new Particle(id++, position, randomRadius(), MASS);
                 particles.add(p);
+                insertInCell(p);
             }
         }
 
@@ -205,5 +234,17 @@ public class GranularMaterials {
         System.out.println(iteration);
         for (Particle p: particles)
             System.out.println(p.position[0] + "\t" + p.position[1] + "\t" + p.radius);
+    }
+
+    private static void insertInCell(Particle p){
+        p.cell = getCellNumber(p);
+        List <Particle> cellParticles = cells.get(getCellNumber(p));
+        cellParticles.add(p);
+    }
+
+    private static int getCellNumber(Particle p){
+        double cellX = Math.floor(p.position[0] / (CliParser.width/matrixSize));
+        double cellY = Math.floor(p.position[1] + (CliParser.height * 1.0/10.0) / (CliParser.height/matrixSize));
+        return (int) (cellY * matrixSize + cellX);
     }
 }
