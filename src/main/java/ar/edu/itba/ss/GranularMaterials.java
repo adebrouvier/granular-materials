@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 
+import static ar.edu.itba.ss.CliParser.gamma;
+
 public class GranularMaterials {
 
     private final static double MIN_RADIUS = 0.01;
@@ -110,49 +112,19 @@ public class GranularMaterials {
 
     private static double[] forces(Particle p, List<Particle> particles) {
 
-        double fx = 0;
-        double fy = 0;
+        double[] force = new double[2];
 
         /* Lateral Walls */
         /* Left wall */
         if (p.position[0] < p.radius){
-            double superposition = p.radius - p.position[0];
-            if (superposition >= 0) {
-                double normalForce = -KN * superposition;
-                double tangentialForce = 0;//-KT * superposition * p.getSpeedModule();
-
-                double dx = 0 - p.position[0];
-                double dy = 0;
-
-                double mod = Math.sqrt(Math.pow(dx, 2) + Math.pow(dy, 2));
-                double ex = (dx / mod);
-                double ey = (dy / mod);
-
-                fx += normalForce * ex + tangentialForce * (-ey);
-                fy += normalForce * ey + tangentialForce * (ex);
-            }
+            force = lateralWallCollision(p, 0);
         }
 
         /* Right wall */
         if (p.position[0] > CliParser.width - p.radius){
-
-
-            double superposition = p.radius - (CliParser.width - p.position[0]);
-
-            if (superposition >= 0) {
-                double normalForce = -KN * superposition;
-                double tangentialForce = -KT * superposition * p.getSpeedModule();
-
-                double dx = CliParser.width - p.position[0];
-                double dy = 0;
-
-                double mod = Math.sqrt(Math.pow(dx, 2) + Math.pow(dy, 2));
-                double ex = (dx / mod);
-                double ey = (dy / mod);
-
-                fx += normalForce * ex + tangentialForce * (-ey);
-                fy += normalForce * ey + tangentialForce * (ex);
-            }
+            double[] newForce = lateralWallCollision(p, CliParser.width);
+            force[0] += newForce[0];
+            force[1] += newForce[1];
         }
 
         if (p.position[1] < p.radius &&
@@ -163,8 +135,8 @@ public class GranularMaterials {
 
             if (superposition >= 0){
 
-                double normalForce = -KN * superposition;
-                double tangentialForce = -KT * superposition * p.getSpeedModule();
+                double normalForce = -KN * superposition - gamma * superposition;
+                double tangentialForce = 0;//-KT * superposition * p.getSpeedModule();
 
                 double dx = 0;
                 double dy = p.position[1];
@@ -173,20 +145,20 @@ public class GranularMaterials {
                 double ex = (dx/mod);
                 double ey = (dy/mod);
 
-                fx += normalForce * ex + tangentialForce * (-ey);
-                fy += normalForce * ey + tangentialForce * (ex);
+                force[0] += normalForce * ex + tangentialForce * (-ey);
+                force[1] += normalForce * ey + tangentialForce * (ex);
 
             }
         }
 
         /* Particle collision */
-        for (Particle neighbour : cells.get(p.cell)) {
+        for (Particle neighbour : particles) {
 
             if (neighbour.equals(p)){
                 break;
             }
 
-            if (p.id != neighbour.id && p.getDistanceTo(neighbour) < 2*MAX_RADIUS) {
+            if (p.getDistanceTo(neighbour) < 2*MAX_RADIUS) {
 
                 double superposition = p.radius + neighbour.radius - p.getDistanceTo(neighbour);
 
@@ -200,19 +172,43 @@ public class GranularMaterials {
                 double ex = (dx/mod);
                 double ey = (dy/mod);
 
-                double normalForce = -KN * superposition;
+                double normalForce = -KN * superposition - gamma * superposition;
                 double[] relSpeed = p.getRelativeSpeedTo(neighbour);
                 double tangentialForce = 0;//-KT * superposition * (relSpeed[0]*(-ey) + relSpeed[1]*ex);
 
-                fx += normalForce * ex + tangentialForce * (-ey);
-                fy += normalForce * ey + tangentialForce * (ex);
+                force[0] += normalForce * ex + tangentialForce * (-ey);
+                force[1] += normalForce * ey + tangentialForce * (ex);
             }
         }
 
-        fy -= p.mass * GRAVITATIONAL_ACCELERATION;
+        force[1] -= p.mass * GRAVITATIONAL_ACCELERATION;
 
-        fx = fx/p.mass;
-        fy = fy/p.mass;
+        force[0] = force[0]/p.mass;
+        force[1] = force[1]/p.mass;
+
+        return force;
+    }
+
+    private static double[] lateralWallCollision(Particle p, double wallCoord) {
+
+        double fx = 0;
+        double fy = 0;
+
+        double superposition = p.radius - Math.abs(p.position[0] - wallCoord);
+        if (superposition >= 0) {
+            double normalForce = -KN * superposition - gamma * superposition;
+            double tangentialForce = 0;//-KT * superposition * p.getSpeedModule();
+
+            double dx = wallCoord - p.position[0];
+            double dy = 0;
+
+            double mod = Math.sqrt(Math.pow(dx, 2) + Math.pow(dy, 2));
+            double ex = (dx / mod);
+            double ey = (dy / mod);
+
+            fx += normalForce * ex + tangentialForce * (-ey);
+            fy += normalForce * ey + tangentialForce * (ex);
+        }
 
         return new double[]{fx, fy};
     }

@@ -11,6 +11,7 @@ public class CliParser {
     static double opening = 0.15;
     static double time = 10;
     static double dt2;
+    static double gamma = 0;
 
     private static Options createOptions(){
         Options options = new Options();
@@ -20,6 +21,7 @@ public class CliParser {
         options.addOption("d", "opening", true, "Size of opening.");
         options.addOption("t", "time", true, "Total time of the simulation.");
         options.addOption("dt2", "deltatime2", true, "Time step for the animation.");
+        options.addOption("g", "gamma", true, "Gamma constant value.");
         return options;
     }
 
@@ -55,6 +57,10 @@ public class CliParser {
 
             if (!(height > width) && !(width > opening)){
                 System.err.println("d < W < h");
+            }
+
+            if (cmd.hasOption("g")) {
+                gamma = Double.parseDouble(cmd.getOptionValue("g"));
             }
         }catch (Exception e){
             System.out.println("Command not recognized.");
