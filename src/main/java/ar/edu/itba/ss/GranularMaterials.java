@@ -1,6 +1,7 @@
 package ar.edu.itba.ss;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -32,6 +33,7 @@ public class GranularMaterials {
         int dt2 = 0;
 
         List<Particle> oldParticles = new ArrayList<>();
+        setNeighbors(particles);
 
         for (double t = 0; t < CliParser.time; t+=dt){
 
@@ -53,6 +55,8 @@ public class GranularMaterials {
     }
 
     private static void updateSpeeds(double dt, List<Particle> particles) {
+        setNeighbors(particles);
+
         for (Particle p : particles) {
 
 //            if ((p.position[0] > (CliParser.width/2 - CliParser.opening/2) &&
@@ -64,7 +68,6 @@ public class GranularMaterials {
 //                p.prevAcceleration = new double[2];
 //                continue;
 //            }
-
             double[] newForce = forces(p);
 
             for (int i = 0; i < p.position.length; i++){
@@ -77,13 +80,11 @@ public class GranularMaterials {
             p.prevAcceleration = p.acceleration;
 
             int newCell = getCellNumber(p);
-            if (p.cell != newCell){
-                List<Particle> previousList = cells.get(p.cell);
-                previousList.remove(p);
-                List<Particle> nextList = cells.get(newCell);
-                nextList.add(p);
-                p.cell = newCell;
-            }
+            List<Particle> previousList = cells.get(p.cell);
+            previousList.remove(p);
+            List<Particle> nextList = cells.get(newCell);
+            nextList.add(p);
+            p.cell = newCell;
         }
     }
 
@@ -106,6 +107,13 @@ public class GranularMaterials {
                         (2.0 / 3) * p.acceleration[i] * Math.pow(dt, 2) -
                         (1.0 / 6) * p.prevAcceleration[i] * Math.pow(dt, 2);
             }
+
+            int newCell = getCellNumber(p);
+            List<Particle> previousList = cells.get(p.cell);
+            previousList.remove(p);
+            List<Particle> nextList = cells.get(newCell);
+            nextList.add(p);
+            p.cell = newCell;
 
         }
     }
@@ -226,13 +234,13 @@ public class GranularMaterials {
 
         double minSize = width < (height * 11.0/10.0)  ? width : (height * 11.0/10.0);
         int rowCellsSize = (int) Math.floor(minSize / MAX_RADIUS);
-        int cellNumber = rowCellsSize * rowCellsSize;
+        int cellNumber = rowCellsSize * rowCellsSize + 2;
         matrixSize = rowCellsSize;
         cells = new ArrayList<>(cellNumber);
 //        areaLengthX = width / matrixSize;
 //        areaLengthY = (height * 11.0/10.0) / matrixSize;
 
-        for (int i = 0; i < cellNumber; i++){
+        for (int i = 0; i <= cellNumber; i++){
             cells.add(i, new LinkedList<>());
         }
 
@@ -250,8 +258,11 @@ public class GranularMaterials {
 //        List<Particle> particles = new ArrayList<>();
 //        Particle p = new Particle(1, new double[]{CliParser.width/5, CliParser.height}, randomRadius(), MASS);
 //        particles.add(p);
+//        insertInCell(p);
 //        p = new Particle(2, new double[]{CliParser.width/5, CliParser.height/2}, randomRadius(), MASS);
 //        particles.add(p);
+//        insertInCell(p);
+
 
         return particles;
     }
@@ -276,6 +287,45 @@ public class GranularMaterials {
     private static int getCellNumber(Particle p){
         double cellX = Math.floor(p.position[0] / (CliParser.width/matrixSize));
         double cellY = Math.floor(p.position[1] + (CliParser.height * 1.0/10.0) / (CliParser.height/matrixSize));
-        return (int) (cellY * matrixSize + cellX);
+        double cell = cellY * matrixSize + cellX;
+        if (cell > matrixSize * matrixSize){
+            cell = matrixSize * matrixSize;
+        }
+        if (cell < 0){
+            cell = matrixSize * matrixSize + 1;
+        }
+        return (int) (cell);
+    }
+
+    private static void setNeighbors(List<Particle> particles){
+        for (Particle p : particles){
+            p.neighbours = new HashSet<>();
+        }
+
+        for (Particle p : particles){
+            p.neighbours.addAll(cells.get(p.cell));
+            int[] indexs = {
+                    p.cell - matrixSize,
+                    p.cell - matrixSize - 1,
+                    p.cell - matrixSize + 1,
+                    p.cell + 1,
+            };
+
+            boolean negativeAdded = false;
+
+            for (int i = 0; i < indexs.length; i++ ){
+                if (indexs[i] >= 0 && indexs[i] < matrixSize * matrixSize + 1){
+                    p.neighbours.addAll(cells.get(indexs[i]));
+                }
+                if (indexs[i] < 0 && !negativeAdded){
+                    negativeAdded = true;
+                    p.neighbours.addAll(cells.get(matrixSize * matrixSize + 1));
+                }
+            }
+            for (Particle n : p.neighbours){
+                n.neighbours.add(p);
+            }
+        }
+
     }
 }
