@@ -41,7 +41,7 @@ public class GranularMaterials {
 
             /* Beeman */
             /*TODO: use beeman for speed dependant forces*/
-            updatePositions(dt, particles, oldParticles);
+            updatePositions(dt, particles);
 
             updateSpeeds(dt, particles);
 
@@ -65,7 +65,7 @@ public class GranularMaterials {
 //                continue;
 //            }
 
-            double[] newForce = forces(p, particles);
+            double[] newForce = forces(p);
 
             for (int i = 0; i < p.position.length; i++){
 
@@ -96,10 +96,10 @@ public class GranularMaterials {
     }
 
 
-    private static void updatePositions(double dt, List<Particle> particles, List<Particle> oldParticles) {
+    private static void updatePositions(double dt, List<Particle> particles) {
         for (Particle p: particles){
 
-            p.acceleration = forces(p, oldParticles);
+            p.acceleration = forces(p);
 
             for (int i = 0; i < p.position.length; i++){
                 p.position[i] = p.position[i] + p.speed[i] * dt +
@@ -110,7 +110,7 @@ public class GranularMaterials {
         }
     }
 
-    private static double[] forces(Particle p, List<Particle> particles) {
+    private static double[] forces(Particle p) {
 
         double[] force = new double[2];
 
@@ -133,10 +133,7 @@ public class GranularMaterials {
 
             double superposition = p.radius - p.position[1];
 
-            if (superposition >= 0){
-
-                double normalForce = -KN * superposition - gamma * superposition;
-                double tangentialForce = 0;//-KT * superposition * p.getSpeedModule();
+            if (superposition > 0){
 
                 double dx = 0;
                 double dy = p.position[1];
@@ -145,6 +142,11 @@ public class GranularMaterials {
                 double ex = (dx/mod);
                 double ey = (dy/mod);
 
+                double relativeSpeed = p.speed[0]*ex + p.speed[1]*ey;
+
+                double normalForce = -KN * superposition - gamma * relativeSpeed;
+                double tangentialForce = 0;//-KT * superposition * p.getSpeedModule();
+
                 force[0] += normalForce * ex + tangentialForce * (-ey);
                 force[1] += normalForce * ey + tangentialForce * (ex);
 
@@ -152,27 +154,26 @@ public class GranularMaterials {
         }
 
         /* Particle collision */
-        for (Particle neighbour : particles) {
+        for (Particle neighbour : p.neighbours) {
 
             if (neighbour.equals(p)){
                 break;
             }
 
-            if (p.getDistanceTo(neighbour) < 2*MAX_RADIUS) {
+            double superposition = p.radius + neighbour.radius - p.getDistanceTo(neighbour);
 
-                double superposition = p.radius + neighbour.radius - p.getDistanceTo(neighbour);
-
-                if (superposition < 0)
-                    continue;
+            if (superposition > 0) {
 
                 double dx = neighbour.position[0] - p.position[0];
                 double dy = neighbour.position[1] - p.position[1];
 
                 double mod = Math.sqrt(Math.pow(dx, 2) + Math.pow(dy, 2));
-                double ex = (dx/mod);
-                double ey = (dy/mod);
+                double ex = (dx / mod);
+                double ey = (dy / mod);
 
-                double normalForce = -KN * superposition - gamma * superposition;
+                double relativeSpeed = (neighbour.speed[0] - p.speed[0]) * ex + (neighbour.speed[1] - p.speed[1]) * ey;
+
+                double normalForce = -KN * superposition - gamma * relativeSpeed;
                 double[] relSpeed = p.getRelativeSpeedTo(neighbour);
                 double tangentialForce = 0;//-KT * superposition * (relSpeed[0]*(-ey) + relSpeed[1]*ex);
 
@@ -196,8 +197,6 @@ public class GranularMaterials {
 
         double superposition = p.radius - Math.abs(p.position[0] - wallCoord);
         if (superposition >= 0) {
-            double normalForce = -KN * superposition - gamma * superposition;
-            double tangentialForce = 0;//-KT * superposition * p.getSpeedModule();
 
             double dx = wallCoord - p.position[0];
             double dy = 0;
@@ -205,6 +204,10 @@ public class GranularMaterials {
             double mod = Math.sqrt(Math.pow(dx, 2) + Math.pow(dy, 2));
             double ex = (dx / mod);
             double ey = (dy / mod);
+
+            double relativeSpeed = p.speed[0]*ex + p.speed[1]*ey;
+            double normalForce = -KN * superposition - gamma * relativeSpeed;
+            double tangentialForce = 0;//-KT * superposition * p.getSpeedModule();
 
             fx += normalForce * ex + tangentialForce * (-ey);
             fy += normalForce * ey + tangentialForce * (ex);
