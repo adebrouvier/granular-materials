@@ -10,7 +10,7 @@ public class CliParser {
     static double height = 2;
     static double opening = 0.15;
     static double time = 10;
-    static double dt2;
+    static double dt2 = 1;
     static double gamma = 0;
 
     private static Options createOptions(){

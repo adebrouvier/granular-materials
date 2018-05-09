@@ -32,14 +32,9 @@ public class GranularMaterials {
         double dt = 0.01*Math.sqrt(MASS/KN);
         int dt2 = 0;
 
-        List<Particle> oldParticles = new ArrayList<>();
         setNeighbors(particles);
 
         for (double t = 0; t < CliParser.time; t+=dt){
-
-            for (Particle p : particles){
-                oldParticles.add(p.getClone());
-            }
 
             /* Beeman */
             /*TODO: use beeman for speed dependant forces*/
@@ -49,13 +44,15 @@ public class GranularMaterials {
 
             if (dt2++ % CliParser.dt2 == 0)
                 printParticles(particles, iterations++);
-
-            oldParticles = new ArrayList<>();
         }
     }
 
     private static void updateSpeeds(double dt, List<Particle> particles) {
-        setNeighbors(particles);
+        try {
+            setNeighbors(particles);
+        } catch (CloneNotSupportedException e) {
+            e.printStackTrace();
+        }
 
         for (Particle p : particles) {
 
@@ -135,13 +132,14 @@ public class GranularMaterials {
             force[1] += newForce[1];
         }
 
-        if (p.position[1] < p.radius &&
+        /*if (p.position[1] < p.radius &&
                 (p.position[0] < (CliParser.width/2 - CliParser.opening/2) ||
-                        p.position[0] > (CliParser.width/2 + CliParser.opening/2))){
+                        p.position[0] > (CliParser.width/2 + CliParser.opening/2))){*/
+        if (p.position[1] < p.radius){
 
             double superposition = p.radius - p.position[1];
 
-            if (superposition > 0){
+            if (Math.abs(superposition) > 0){
 
                 double dx = 0;
                 double dy = p.position[1];
@@ -153,10 +151,9 @@ public class GranularMaterials {
                 double relativeSpeed = p.speed[0]*ex + p.speed[1]*ey;
 
                 double normalForce = -KN * superposition - gamma * relativeSpeed;
-                double tangentialForce = 0;//-KT * superposition * p.getSpeedModule();
 
-                force[0] += normalForce * ex + tangentialForce * (-ey);
-                force[1] += normalForce * ey + tangentialForce * (ex);
+                force[0] += normalForce * ex;
+                force[1] += normalForce * ey;
 
             }
         }
@@ -164,29 +161,26 @@ public class GranularMaterials {
         /* Particle collision */
         for (Particle neighbour : p.neighbours) {
 
-            if (neighbour.equals(p)){
-                break;
-            }
+            if (!neighbour.equals(p)){
 
-            double superposition = p.radius + neighbour.radius - p.getDistanceTo(neighbour);
+                double superposition = p.radius + neighbour.radius - p.getDistanceTo(neighbour);
 
-            if (superposition > 0) {
+                if (superposition > 0) {
 
-                double dx = neighbour.position[0] - p.position[0];
-                double dy = neighbour.position[1] - p.position[1];
+                    double dx = neighbour.position[0] - p.position[0];
+                    double dy = neighbour.position[1] - p.position[1];
 
-                double mod = Math.sqrt(Math.pow(dx, 2) + Math.pow(dy, 2));
-                double ex = (dx / mod);
-                double ey = (dy / mod);
+                    double mod = Math.sqrt(Math.pow(dx, 2) + Math.pow(dy, 2));
+                    double ex = (dx / mod);
+                    double ey = (dy / mod);
 
-                double relativeSpeed = (neighbour.speed[0] - p.speed[0]) * ex + (neighbour.speed[1] - p.speed[1]) * ey;
+                    double relativeSpeed = (neighbour.speed[0] - p.speed[0]) * ex + (neighbour.speed[1] - p.speed[1]) * ey;
 
-                double normalForce = -KN * superposition - gamma * relativeSpeed;
-                double[] relSpeed = p.getRelativeSpeedTo(neighbour);
-                double tangentialForce = 0;//-KT * superposition * (relSpeed[0]*(-ey) + relSpeed[1]*ex);
+                    double normalForce = -KN * superposition - gamma * relativeSpeed;
 
-                force[0] += normalForce * ex + tangentialForce * (-ey);
-                force[1] += normalForce * ey + tangentialForce * (ex);
+                    force[0] += normalForce * ex;
+                    force[1] += normalForce * ey;
+                }
             }
         }
 
@@ -215,10 +209,9 @@ public class GranularMaterials {
 
             double relativeSpeed = p.speed[0]*ex + p.speed[1]*ey;
             double normalForce = -KN * superposition - gamma * relativeSpeed;
-            double tangentialForce = 0;//-KT * superposition * p.getSpeedModule();
 
-            fx += normalForce * ex + tangentialForce * (-ey);
-            fy += normalForce * ey + tangentialForce * (ex);
+            fx += normalForce * ex;
+            fy += normalForce * ey;
         }
 
         return new double[]{fx, fy};
@@ -244,22 +237,22 @@ public class GranularMaterials {
             cells.add(i, new LinkedList<>());
         }
 
-        List<Particle> particles = new ArrayList<>();
-        int id = 1;
-        for (int i = 0; i < horizontalLimit; i++){
-            for (int j = 0; j < verticalLimit; j++) {
-                double[] position = {MAX_RADIUS + MAX_DIAMETER*i, MAX_RADIUS + MAX_DIAMETER*j};
-                Particle p = new Particle(id++, position, randomRadius(), MASS);
-                particles.add(p);
-                insertInCell(p);
-            }
-        }
-
 //        List<Particle> particles = new ArrayList<>();
-//        Particle p = new Particle(1, new double[]{CliParser.width/5, CliParser.height}, randomRadius(), MASS);
-//        particles.add(p);
-//        insertInCell(p);
-//        p = new Particle(2, new double[]{CliParser.width/5, CliParser.height/2}, randomRadius(), MASS);
+//        int id = 1;
+//        for (int i = 0; i < horizontalLimit; i++){
+//            for (int j = 0; j < verticalLimit; j++) {
+//                double[] position = {MAX_RADIUS + MAX_DIAMETER*i, MAX_RADIUS + MAX_DIAMETER*j};
+//                Particle p = new Particle(id++, position, randomRadius(), MASS);
+//                particles.add(p);
+//                insertInCell(p);
+//            }
+//        }
+
+        List<Particle> particles = new ArrayList<>();
+        Particle p = new Particle(1, new double[]{CliParser.width/5, CliParser.height/6}, randomRadius(), MASS);
+        particles.add(p);
+        insertInCell(p);
+//        p = new Particle(2, new double[]{CliParser.width/5, CliParser.height/4}, randomRadius(), MASS);
 //        particles.add(p);
 //        insertInCell(p);
 
@@ -275,7 +268,7 @@ public class GranularMaterials {
         System.out.println(particles.size());
         System.out.println(iteration);
         for (Particle p: particles)
-            System.out.println(p.position[0] + "\t" + p.position[1] + "\t" + p.radius);
+            System.out.println(p.position[0] + "\t" + p.position[1] + "\t" + p.radius + "\t" + p.speed[0] + "\t" + p.speed[1]);
     }
 
     private static void insertInCell(Particle p){
@@ -297,13 +290,13 @@ public class GranularMaterials {
         return (int) (cell);
     }
 
-    private static void setNeighbors(List<Particle> particles){
+    private static void setNeighbors(List<Particle> particles) throws CloneNotSupportedException {
         for (Particle p : particles){
             p.neighbours = new HashSet<>();
         }
 
         for (Particle p : particles){
-            p.neighbours.addAll(cells.get(p.cell));
+            addNeighbours(p, cells.get(p.cell));
             int[] indexs = {
                     p.cell - matrixSize,
                     p.cell - matrixSize - 1,
@@ -315,17 +308,23 @@ public class GranularMaterials {
 
             for (int i = 0; i < indexs.length; i++ ){
                 if (indexs[i] >= 0 && indexs[i] < matrixSize * matrixSize + 1){
-                    p.neighbours.addAll(cells.get(indexs[i]));
+                    addNeighbours(p, cells.get(indexs[i]));
                 }
                 if (indexs[i] < 0 && !negativeAdded){
                     negativeAdded = true;
-                    p.neighbours.addAll(cells.get(matrixSize * matrixSize + 1));
+                    addNeighbours(p, cells.get(matrixSize * matrixSize + 1));
                 }
             }
             for (Particle n : p.neighbours){
-                n.neighbours.add(p);
+                n.neighbours.add(p.getClone());
             }
         }
 
+    }
+
+    private static void addNeighbours(Particle p, LinkedList<Particle> neighbours) throws CloneNotSupportedException {
+        for (Particle neighbour : neighbours) {
+            p.neighbours.add(neighbour.getClone());
+        }
     }
 }
