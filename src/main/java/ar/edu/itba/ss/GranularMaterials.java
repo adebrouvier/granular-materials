@@ -14,7 +14,6 @@ public class GranularMaterials {
     private final static double MAX_DIAMETER = MAX_RADIUS*2;
     private final static double MASS = 0.01;
     private final static double KN = Math.pow(10, 5);
-    private final static double KT = 2*KN;
     private final static double GRAVITATIONAL_ACCELERATION = 9.8;
     private static ArrayList<LinkedList<Particle>> cells;
     private static int matrixSize;
@@ -74,7 +73,8 @@ public class GranularMaterials {
                         (1.0 / 6) * p.prevAcceleration[i] * dt;
             }
 
-            p.prevAcceleration = p.acceleration;
+            p.prevAcceleration[0] = p.acceleration[0];
+            p.prevAcceleration[1] = p.acceleration[1];
 
             int newCell = getCellNumber(p);
             List<Particle> previousList = cells.get(p.cell);
@@ -237,21 +237,21 @@ public class GranularMaterials {
             cells.add(i, new LinkedList<>());
         }
 
-//        List<Particle> particles = new ArrayList<>();
-//        int id = 1;
-//        for (int i = 0; i < horizontalLimit; i++){
-//            for (int j = 0; j < verticalLimit; j++) {
-//                double[] position = {MAX_RADIUS + MAX_DIAMETER*i, MAX_RADIUS + MAX_DIAMETER*j};
-//                Particle p = new Particle(id++, position, randomRadius(), MASS);
-//                particles.add(p);
-//                insertInCell(p);
-//            }
-//        }
-
         List<Particle> particles = new ArrayList<>();
-        Particle p = new Particle(1, new double[]{CliParser.width/5, CliParser.height/6}, randomRadius(), MASS);
-        particles.add(p);
-        insertInCell(p);
+        int id = 1;
+        for (int i = 0; i < horizontalLimit; i++){
+            for (int j = 0; j < verticalLimit; j++) {
+                double[] position = {MAX_RADIUS + MAX_DIAMETER*i, MAX_RADIUS + MAX_DIAMETER*j};
+                Particle p = new Particle(id++, position, randomRadius(), MASS);
+                particles.add(p);
+                insertInCell(p);
+            }
+        }
+
+//        List<Particle> particles = new ArrayList<>();
+//        Particle p = new Particle(1, new double[]{CliParser.width/5, CliParser.height/6}, randomRadius(), MASS);
+//        particles.add(p);
+//        insertInCell(p);
 //        p = new Particle(2, new double[]{CliParser.width/5, CliParser.height/4}, randomRadius(), MASS);
 //        particles.add(p);
 //        insertInCell(p);
