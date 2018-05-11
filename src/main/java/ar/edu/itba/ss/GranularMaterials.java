@@ -1,10 +1,5 @@
 package ar.edu.itba.ss;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.List;
-
 import static ar.edu.itba.ss.CliParser.gamma;
 
 public class GranularMaterials {
@@ -13,7 +8,7 @@ public class GranularMaterials {
     private final static double MAX_RADIUS = 0.015;
     private final static double MAX_DIAMETER = MAX_RADIUS*2;
     private final static double MASS = 0.01;
-    private final static double KN = Math.pow(10, 5);
+    private final static double KN = Math.pow(10, 4);
     private final static double GRAVITATIONAL_ACCELERATION = 9.8;
     private static CellIndexMethod cellIndexMethod;
 
@@ -130,7 +125,7 @@ public class GranularMaterials {
             if (Math.abs(superposition) > 0){
 
                 double dx = 0;
-                double dy = p.position[1];
+                double dy = -Math.abs(p.position[1]);
 
                 double mod = Math.sqrt(Math.pow(dx, 2) + Math.pow(dy, 2));
                 double ex = (dx/mod);
@@ -162,7 +157,7 @@ public class GranularMaterials {
                     double ex = (dx / mod);
                     double ey = (dy / mod);
 
-                    double relativeSpeed = (neighbour.speed[0] - p.speed[0]) * ex + (neighbour.speed[1] - p.speed[1]) * ey;
+                    double relativeSpeed = (p.speed[0] - neighbour.speed[0]) * ex + (p.speed[1] - neighbour.speed[1]) * ey;
 
                     double normalForce = -KN * superposition - gamma * relativeSpeed;
 
@@ -186,7 +181,7 @@ public class GranularMaterials {
         double fy = 0;
 
         double superposition = p.radius - Math.abs(p.position[0] - wallCoord);
-        if (superposition >= 0) {
+        if (superposition > 0) {
 
             double dx = wallCoord - p.position[0];
             double dy = 0;
@@ -213,19 +208,23 @@ public class GranularMaterials {
         double horizontalLimit = Math.floor(width/MAX_DIAMETER);
         double verticalLimit = Math.floor(height/MAX_DIAMETER);
 
-//        int id = 1;
-//        for (int i = 0; i < horizontalLimit; i++){
-//            for (int j = 0; j < verticalLimit; j++) {
-//                double[] position = {MAX_RADIUS + MAX_DIAMETER*i, MAX_RADIUS + MAX_DIAMETER*j};
-//                Particle p = new Particle(id++, position, randomRadius(), MASS);
-//                cellIndexMethod.putParticle(p);
-//            }
-//        }
+        int id = 1;
+        for (double i = 0; i < verticalLimit; i++){
+            for (double j = 0; j < horizontalLimit; j++) {
+                double radius = randomRadius();
+                double x = radius + MAX_DIAMETER*j + Math.random()*(MAX_DIAMETER - 2*radius);
+                double[] position = {x, MAX_RADIUS + MAX_DIAMETER*i};
+                Particle p = new Particle(id++, position, radius, MASS);
+                cellIndexMethod.putParticle(p);
+            }
+        }
 
-        Particle p = new Particle(1, new double[]{CliParser.width/5, CliParser.height/6}, randomRadius(), MASS);
-        cellIndexMethod.putParticle(p);
-        p = new Particle(2, new double[]{CliParser.width/5, CliParser.height/4}, randomRadius(), MASS);
-        cellIndexMethod.putParticle(p);
+//        Particle p = new Particle(1, new double[]{MAX_DIAMETER, CliParser.height}, MAX_RADIUS, MASS);
+//        p.speed = new double[]{1.0, 0};
+//        cellIndexMethod.putParticle(p);
+//        p = new Particle(2, new double[]{0.5, CliParser.height}, MAX_RADIUS, MASS);
+//        p.speed = new double[]{-1.0, 0};
+//        cellIndexMethod.putParticle(p);
 
     }
 
