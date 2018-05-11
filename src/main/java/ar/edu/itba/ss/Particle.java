@@ -12,8 +12,8 @@ public class Particle implements Cloneable{
     double mass;
     double[] acceleration;
     double[] prevAcceleration;
-    int cell;
-    Set<Particle> neighbours;
+    Integer cell = null;
+    Set<Particle> neighbors;
 
     public Particle(int id, double[] position, double radius, double mass) {
         this.id = id;
@@ -22,7 +22,7 @@ public class Particle implements Cloneable{
         this.mass = mass;
         this.speed = new double[]{0, 0};
         this.prevAcceleration = new double[]{0, 0};
-        this.neighbours = new HashSet<>();
+        this.neighbors = new HashSet<>();
     }
 
     @Override

@@ -15,45 +15,41 @@ public class GranularMaterials {
     private final static double MASS = 0.01;
     private final static double KN = Math.pow(10, 5);
     private final static double GRAVITATIONAL_ACCELERATION = 9.8;
-    private static ArrayList<LinkedList<Particle>> cells;
-    private static int matrixSize;
+    private static CellIndexMethod cellIndexMethod;
 
     public static void main(String[] args) throws CloneNotSupportedException {
         CliParser.parseOptions(args);
-        List<Particle> particles = createParticles();
-        initSimulation(particles);
+        cellIndexMethod = new CellIndexMethod(CliParser.width, CliParser.height, MAX_RADIUS + 0.001);
+        createParticles();
+        initSimulation();
     }
 
-    private static void initSimulation(List<Particle> particles) throws CloneNotSupportedException {
+    private static void initSimulation(){
         int iterations = 0;
-        printParticles(particles, iterations++);
+        printParticles(iterations++);
 
         double dt = 0.01*Math.sqrt(MASS/KN);
         int dt2 = 0;
 
-        setNeighbors(particles);
+        cellIndexMethod.setNeighbors();
 
         for (double t = 0; t < CliParser.time; t+=dt){
 
             /* Beeman */
             /*TODO: use beeman for speed dependant forces*/
-            updatePositions(dt, particles);
+            updatePositions(dt);
 
-            updateSpeeds(dt, particles);
+            updateSpeeds(dt);
 
             if (dt2++ % CliParser.dt2 == 0)
-                printParticles(particles, iterations++);
+                printParticles(iterations++);
         }
     }
 
-    private static void updateSpeeds(double dt, List<Particle> particles) {
-        try {
-            setNeighbors(particles);
-        } catch (CloneNotSupportedException e) {
-            e.printStackTrace();
-        }
+    private static void updateSpeeds(double dt) {
+        cellIndexMethod.setNeighbors();
 
-        for (Particle p : particles) {
+        for (Particle p : cellIndexMethod.particles) {
 
 //            if ((p.position[0] > (CliParser.width/2 - CliParser.opening/2) &&
 //                    p.position[0] < (CliParser.width/2 + CliParser.opening/2)) &&
@@ -73,15 +69,10 @@ public class GranularMaterials {
                         (1.0 / 6) * p.prevAcceleration[i] * dt;
             }
 
-            p.prevAcceleration[0] = p.acceleration[0];
-            p.prevAcceleration[1] = p.acceleration[1];
+            p.prevAcceleration = p.acceleration;
+            p.acceleration = newForce;
 
-            int newCell = getCellNumber(p);
-            List<Particle> previousList = cells.get(p.cell);
-            previousList.remove(p);
-            List<Particle> nextList = cells.get(newCell);
-            nextList.add(p);
-            p.cell = newCell;
+            cellIndexMethod.putParticle(p);
         }
     }
 
@@ -94,10 +85,12 @@ public class GranularMaterials {
     }
 
 
-    private static void updatePositions(double dt, List<Particle> particles) {
-        for (Particle p: particles){
+    private static void updatePositions(double dt) {
+        for (Particle p: cellIndexMethod.particles){
 
-            p.acceleration = forces(p);
+            if (p.acceleration == null){
+                p.acceleration = forces(p);
+            }
 
             for (int i = 0; i < p.position.length; i++){
                 p.position[i] = p.position[i] + p.speed[i] * dt +
@@ -105,12 +98,7 @@ public class GranularMaterials {
                         (1.0 / 6) * p.prevAcceleration[i] * Math.pow(dt, 2);
             }
 
-            int newCell = getCellNumber(p);
-            List<Particle> previousList = cells.get(p.cell);
-            previousList.remove(p);
-            List<Particle> nextList = cells.get(newCell);
-            nextList.add(p);
-            p.cell = newCell;
+            cellIndexMethod.putParticle(p);
 
         }
     }
@@ -159,7 +147,7 @@ public class GranularMaterials {
         }
 
         /* Particle collision */
-        for (Particle neighbour : p.neighbours) {
+        for (Particle neighbour : p.neighbors) {
 
             if (!neighbour.equals(p)){
 
@@ -217,7 +205,7 @@ public class GranularMaterials {
         return new double[]{fx, fy};
     }
 
-    private static List<Particle> createParticles() {
+    private static void createParticles() {
 
         double width = CliParser.width;
         double height = CliParser.height;
@@ -225,106 +213,31 @@ public class GranularMaterials {
         double horizontalLimit = Math.floor(width/MAX_DIAMETER);
         double verticalLimit = Math.floor(height/MAX_DIAMETER);
 
-        double minSize = width < (height * 11.0/10.0)  ? width : (height * 11.0/10.0);
-        int rowCellsSize = (int) Math.floor(minSize / MAX_RADIUS);
-        int cellNumber = rowCellsSize * rowCellsSize + 2;
-        matrixSize = rowCellsSize;
-        cells = new ArrayList<>(cellNumber);
-//        areaLengthX = width / matrixSize;
-//        areaLengthY = (height * 11.0/10.0) / matrixSize;
+//        int id = 1;
+//        for (int i = 0; i < horizontalLimit; i++){
+//            for (int j = 0; j < verticalLimit; j++) {
+//                double[] position = {MAX_RADIUS + MAX_DIAMETER*i, MAX_RADIUS + MAX_DIAMETER*j};
+//                Particle p = new Particle(id++, position, randomRadius(), MASS);
+//                cellIndexMethod.putParticle(p);
+//            }
+//        }
 
-        for (int i = 0; i <= cellNumber; i++){
-            cells.add(i, new LinkedList<>());
-        }
+        Particle p = new Particle(1, new double[]{CliParser.width/5, CliParser.height/6}, randomRadius(), MASS);
+        cellIndexMethod.putParticle(p);
+        p = new Particle(2, new double[]{CliParser.width/5, CliParser.height/4}, randomRadius(), MASS);
+        cellIndexMethod.putParticle(p);
 
-        List<Particle> particles = new ArrayList<>();
-        int id = 1;
-        for (int i = 0; i < horizontalLimit; i++){
-            for (int j = 0; j < verticalLimit; j++) {
-                double[] position = {MAX_RADIUS + MAX_DIAMETER*i, MAX_RADIUS + MAX_DIAMETER*j};
-                Particle p = new Particle(id++, position, randomRadius(), MASS);
-                particles.add(p);
-                insertInCell(p);
-            }
-        }
-
-//        List<Particle> particles = new ArrayList<>();
-//        Particle p = new Particle(1, new double[]{CliParser.width/5, CliParser.height/6}, randomRadius(), MASS);
-//        particles.add(p);
-//        insertInCell(p);
-//        p = new Particle(2, new double[]{CliParser.width/5, CliParser.height/4}, randomRadius(), MASS);
-//        particles.add(p);
-//        insertInCell(p);
-
-
-        return particles;
     }
 
     private static double randomRadius() {
         return MIN_RADIUS + Math.random()*(MAX_RADIUS - MIN_RADIUS);
     }
 
-    private static void printParticles(List<Particle> particles, int iteration){
-        System.out.println(particles.size());
+    private static void printParticles(int iteration){
+        System.out.println(cellIndexMethod.particles.size());
         System.out.println(iteration);
-        for (Particle p: particles)
+        for (Particle p: cellIndexMethod.particles)
             System.out.println(p.position[0] + "\t" + p.position[1] + "\t" + p.radius + "\t" + p.speed[0] + "\t" + p.speed[1]);
     }
 
-    private static void insertInCell(Particle p){
-        p.cell = getCellNumber(p);
-        List <Particle> cellParticles = cells.get(getCellNumber(p));
-        cellParticles.add(p);
-    }
-
-    private static int getCellNumber(Particle p){
-        double cellX = Math.floor(p.position[0] / (CliParser.width/matrixSize));
-        double cellY = Math.floor(p.position[1] + (CliParser.height * 1.0/10.0) / (CliParser.height/matrixSize));
-        double cell = cellY * matrixSize + cellX;
-        if (cell > matrixSize * matrixSize){
-            cell = matrixSize * matrixSize;
-        }
-        if (cell < 0){
-            cell = matrixSize * matrixSize + 1;
-        }
-        return (int) (cell);
-    }
-
-    private static void setNeighbors(List<Particle> particles) throws CloneNotSupportedException {
-        for (Particle p : particles){
-            p.neighbours = new HashSet<>();
-        }
-
-        for (Particle p : particles){
-            addNeighbours(p, cells.get(p.cell));
-            int[] indexs = {
-                    p.cell - matrixSize,
-                    p.cell - matrixSize - 1,
-                    p.cell - matrixSize + 1,
-                    p.cell + 1,
-            };
-
-            boolean negativeAdded = false;
-
-            for (int i = 0; i < indexs.length; i++ ){
-                if (indexs[i] >= 0 && indexs[i] < matrixSize * matrixSize + 1){
-                    addNeighbours(p, cells.get(indexs[i]));
-                }
-                if (indexs[i] < 0 && !negativeAdded){
-                    negativeAdded = true;
-                    addNeighbours(p, cells.get(matrixSize * matrixSize + 1));
-                }
-            }
-            for (Particle n : p.neighbours){
-                n.neighbours.add(p.getClone());
-            }
-        }
-
-    }
-
-    private static void addNeighbours(Particle p, LinkedList<Particle> neighbours) throws CloneNotSupportedException {
-        for (Particle neighbour : neighbours) {
-            p.neighbours.add(neighbour.getClone());
-        }
-    }
 }
