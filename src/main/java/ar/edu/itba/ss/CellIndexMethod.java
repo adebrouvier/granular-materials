@@ -87,17 +87,18 @@ public class CellIndexMethod{
     }
 
     public void setNeighbors(){
-        cells.forEach((k, v) -> {
-            for (Particle p: v){
-                p.neighbors = new HashSet<>();
-            }
-            for (Particle p : v){
-                List<Integer> index = findNeighborsIndexCells(p);
-                List<Particle> neighbors = new LinkedList<>();
-                for (Integer i : index){
-                    List<Particle> particleList = cells.get(i);
-                    neighbors.addAll(particleList);
-                    for (Particle particle : particleList){
+
+        for (Particle p: this.particles){
+            p.neighbors = new HashSet<>();
+        }
+        for (Particle p : this.particles){
+            List<Integer> index = findNeighborsIndexCells(p);
+            List<Particle> neighbors = new LinkedList<>();
+            for (Integer i : index){
+                List<Particle> particleList = cells.get(i);
+                neighbors.addAll(particleList);
+                for (Particle particle : particleList){
+                    if (!particle.equals(p)) {
                         try {
                             p.neighbors.add(particle.getClone());
                         } catch (CloneNotSupportedException e) {
@@ -105,17 +106,18 @@ public class CellIndexMethod{
                         }
                     }
                 }
-                for (Particle n : neighbors){
-                    if (!n.equals(p)){
-                        try {
-                            n.neighbors.add(p.getClone());
-                        } catch (CloneNotSupportedException e) {
-                            e.printStackTrace();
-                        }
+            }
+
+            for (Particle n : neighbors){
+                if (!n.equals(p)){
+                    try {
+                        n.neighbors.add(p.getClone());
+                    } catch (CloneNotSupportedException e) {
+                        e.printStackTrace();
                     }
                 }
             }
-        });
+        }
     }
 
 }
