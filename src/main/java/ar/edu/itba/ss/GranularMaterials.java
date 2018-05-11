@@ -46,15 +46,9 @@ public class GranularMaterials {
 
         for (Particle p : cellIndexMethod.particles) {
 
-//            if ((p.position[0] > (CliParser.width/2 - CliParser.opening/2) &&
-//                    p.position[0] < (CliParser.width/2 + CliParser.opening/2)) &&
-//                    p.position[1] < (-CliParser.height/10) ) { /* Reset particles to the top */
-//                p.position = newCoords(p.radius);
-//                p.speed = new double[2];
-//                p.acceleration = new double[2];
-//                p.prevAcceleration = new double[2];
-//                continue;
-//            }
+            if (checkAndResetPosition(p))
+                continue;
+
             double[] newForce = forces(p);
 
             for (int i = 0; i < p.position.length; i++){
@@ -69,6 +63,21 @@ public class GranularMaterials {
 
             cellIndexMethod.putParticle(p);
         }
+    }
+
+    private static boolean checkAndResetPosition(Particle p) {
+
+        if ((p.position[0] > (p.radius + CliParser.width/2 - CliParser.opening/2) &&
+                p.position[0] < (CliParser.width/2 + CliParser.opening/2 - p.radius)) &&
+                p.position[1] < (-CliParser.height/10) ) { /* Reset particles to the top */
+            p.position = newCoords(p.radius);
+            p.speed = new double[2];
+            p.acceleration = new double[2];
+            p.prevAcceleration = new double[2];
+            return true;
+        }
+
+        return false;
     }
 
     private static double[] newCoords(double radius) {
@@ -115,10 +124,9 @@ public class GranularMaterials {
             force[1] += newForce[1];
         }
 
-        /*if (p.position[1] < p.radius &&
-                (p.position[0] < (CliParser.width/2 - CliParser.opening/2) ||
-                        p.position[0] > (CliParser.width/2 + CliParser.opening/2))){*/
-        if (p.position[1] < p.radius){
+        if (p.position[1] < p.radius &&
+                (p.position[0] < (p.radius + CliParser.width/2 - CliParser.opening/2) ||
+                        p.position[0] > (CliParser.width/2 + CliParser.opening/2 - p.radius))){
 
             double superposition = p.radius - p.position[1];
 
