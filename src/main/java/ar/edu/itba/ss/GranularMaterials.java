@@ -31,7 +31,6 @@ public class GranularMaterials {
         for (double t = 0; t < CliParser.time; t+=dt){
 
             /* Beeman */
-            /*TODO: use beeman for speed dependant forces*/
             updatePositions(dt);
 
             updateSpeeds(dt);
@@ -49,11 +48,17 @@ public class GranularMaterials {
             if (checkAndResetPosition(p))
                 continue;
 
+            double[] oldSpeed = new double[]{p.speed[0], p.speed[1]};
+
+            for (int i = 0; i < p.speed.length; i++){
+                p.speed[i] = p.speed[i] + (3.0 / 2) * p.acceleration[i] * dt -
+                        (1.0 / 2) * p.prevAcceleration[i] * dt;
+            }
+
             double[] newForce = forces(p);
 
-            for (int i = 0; i < p.position.length; i++){
-
-                p.speed[i] = p.speed[i] + (1.0 / 3) * newForce[i] * dt +
+            for (int i = 0; i < p.speed.length; i++){
+                p.speed[i] = oldSpeed[i] + (1.0 / 3) * newForce[i] * dt +
                         (5.0 / 6) * p.acceleration[i] * dt -
                         (1.0 / 6) * p.prevAcceleration[i] * dt;
             }
