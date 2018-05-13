@@ -14,6 +14,7 @@ public class Particle implements Cloneable{
     double[] prevAcceleration;
     Integer cell = null;
     Set<Particle> neighbors;
+    double pressure;
 
     public Particle(int id, double[] position, double radius, double mass) {
         this.id = id;

@@ -28,49 +28,32 @@ public class GranularMaterials {
 
         cellIndexMethod.setNeighbors();
 
+        Integrator integrator = new Beeman(dt);
+
         for (double t = 0; t < CliParser.time; t+=dt){
 
-            /* Beeman */
-            updatePositions(dt);
+            integrator.updatePositions(cellIndexMethod.particles);
 
-            updateSpeeds(dt);
+            updateCells();
+
+            cellIndexMethod.setNeighbors();
+
+            integrator.updateSpeeds(cellIndexMethod.particles);
+
+            updateCells();
 
             if (dt2++ % CliParser.dt2 == 0)
                 printParticles(iterations++);
         }
     }
 
-    private static void updateSpeeds(double dt) {
-        cellIndexMethod.setNeighbors();
-
-        for (Particle p : cellIndexMethod.particles) {
-
-            if (checkAndResetPosition(p))
-                continue;
-
-            double[] oldSpeed = new double[]{p.speed[0], p.speed[1]};
-
-            for (int i = 0; i < p.speed.length; i++){
-                p.speed[i] = p.speed[i] + (3.0 / 2) * p.acceleration[i] * dt -
-                        (1.0 / 2) * p.prevAcceleration[i] * dt;
-            }
-
-            double[] newForce = forces(p);
-
-            for (int i = 0; i < p.speed.length; i++){
-                p.speed[i] = oldSpeed[i] + (1.0 / 3) * newForce[i] * dt +
-                        (5.0 / 6) * p.acceleration[i] * dt -
-                        (1.0 / 6) * p.prevAcceleration[i] * dt;
-            }
-
-            p.prevAcceleration = p.acceleration;
-            p.acceleration = newForce;
-
+    private static void updateCells(){
+        for (Particle p: cellIndexMethod.particles) {
             cellIndexMethod.putParticle(p);
         }
     }
 
-    private static boolean checkAndResetPosition(Particle p) {
+    public static boolean checkAndResetPosition(Particle p) {
 
         if ((p.position[0] > (p.radius + CliParser.width/2 - CliParser.opening/2) &&
                 p.position[0] < (CliParser.width/2 + CliParser.opening/2 - p.radius)) &&
@@ -93,26 +76,7 @@ public class GranularMaterials {
         return new double[]{newX, newY};
     }
 
-
-    private static void updatePositions(double dt) {
-        for (Particle p: cellIndexMethod.particles){
-
-            if (p.acceleration == null){
-                p.acceleration = forces(p);
-            }
-
-            for (int i = 0; i < p.position.length; i++){
-                p.position[i] = p.position[i] + p.speed[i] * dt +
-                        (2.0 / 3) * p.acceleration[i] * Math.pow(dt, 2) -
-                        (1.0 / 6) * p.prevAcceleration[i] * Math.pow(dt, 2);
-            }
-
-            cellIndexMethod.putParticle(p);
-
-        }
-    }
-
-    private static double[] forces(Particle p) {
+    public static double[] forces(Particle p) {
 
         double[] force = new double[2];
 
@@ -181,6 +145,8 @@ public class GranularMaterials {
         }
 
         force[1] -= p.mass * GRAVITATIONAL_ACCELERATION;
+        p.pressure = Math.sqrt(Math.pow(force[0], 2) + Math.pow(force[1], 2)) /
+                (2 * Math.PI * p.radius);
 
         force[0] = force[0]/p.mass;
         force[1] = force[1]/p.mass;
@@ -249,7 +215,7 @@ public class GranularMaterials {
         System.out.println(cellIndexMethod.particles.size());
         System.out.println(iteration);
         for (Particle p: cellIndexMethod.particles)
-            System.out.println(p.position[0] + "\t" + p.position[1] + "\t" + p.radius + "\t" + p.speed[0] + "\t" + p.speed[1]);
+            System.out.println(p.position[0] + "\t" + p.position[1] + "\t" + p.radius + "\t" + p.pressure);
     }
 
 }
