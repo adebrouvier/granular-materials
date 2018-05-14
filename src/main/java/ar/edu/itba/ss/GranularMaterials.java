@@ -55,12 +55,17 @@ public class GranularMaterials {
 
             updateCells();
 
-            if (dt2++ % CliParser.dt2 == 0) {
-                printParticles(iterations++);
+            if (dt2 % (CliParser.dt2*5) == 0){
+                double flow = exitParticles/(dt*CliParser.dt2*5);
                 double kineticEnergy = getKineticEnergy();
-                flowFile.println(exitParticles/(dt*dt2) + "\t" + kineticEnergy);
+                flowFile.println(flow + "\t" + kineticEnergy);
                 exitParticles = 0;
             }
+
+            if (dt2++ % CliParser.dt2 == 0) {
+                printParticles(iterations++);
+            }
+
         }
         flowFile.close();
     }
