@@ -58,4 +58,8 @@ public class Particle implements Cloneable{
     public double getSpeedModule() {
         return Math.sqrt(Math.pow(this.speed[0], 2) + Math.pow(this.speed[1], 2));
     }
+
+    public double getKineticEnergy() {
+        return (1.0 / 2) * mass * Math.pow(getSpeedModule(), 2);
+    }
 }

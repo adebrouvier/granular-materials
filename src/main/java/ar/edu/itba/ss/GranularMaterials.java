@@ -1,5 +1,9 @@
 package ar.edu.itba.ss;
 
+import java.io.FileNotFoundException;
+import java.io.PrintWriter;
+import java.io.UnsupportedEncodingException;
+
 import static ar.edu.itba.ss.CliParser.gamma;
 
 public class GranularMaterials {
@@ -10,6 +14,7 @@ public class GranularMaterials {
     private final static double MASS = 0.01;
     private final static double KN = Math.pow(10, 4);
     private final static double GRAVITATIONAL_ACCELERATION = 9.8;
+    private static double exitParticles;
     private static CellIndexMethod cellIndexMethod;
 
     public static void main(String[] args) throws CloneNotSupportedException {
@@ -30,6 +35,14 @@ public class GranularMaterials {
 
         Integrator integrator = new Beeman(dt);
 
+
+        PrintWriter flowFile = null;
+        try {
+            flowFile = new PrintWriter(CliParser.statsFile, "UTF-8");
+        } catch (FileNotFoundException | UnsupportedEncodingException e) {
+            System.err.println("Could not write to stats file.");
+        }
+
         for (double t = 0; t < CliParser.time; t+=dt){
 
             integrator.updatePositions(cellIndexMethod.particles);
@@ -42,9 +55,25 @@ public class GranularMaterials {
 
             updateCells();
 
-            if (dt2++ % CliParser.dt2 == 0)
+            if (dt2++ % CliParser.dt2 == 0) {
                 printParticles(iterations++);
+                double kineticEnergy = getKineticEnergy();
+                flowFile.println(exitParticles/(dt*dt2) + "\t" + kineticEnergy);
+                exitParticles = 0;
+            }
         }
+        flowFile.close();
+    }
+
+    private static double getKineticEnergy() {
+
+        double kineticEnergy = 0;
+
+        for (Particle p: cellIndexMethod.particles){
+            kineticEnergy += p.getKineticEnergy();
+        }
+
+        return kineticEnergy;
     }
 
     private static void updateCells(){
@@ -62,6 +91,7 @@ public class GranularMaterials {
             p.speed = new double[2];
             p.acceleration = new double[2];
             p.prevAcceleration = new double[2];
+            exitParticles++;
             return true;
         }
 
@@ -144,9 +174,9 @@ public class GranularMaterials {
             }
         }
 
-        force[1] -= p.mass * GRAVITATIONAL_ACCELERATION;
         p.pressure = Math.sqrt(Math.pow(force[0], 2) + Math.pow(force[1], 2)) /
                 (2 * Math.PI * p.radius);
+        force[1] -= p.mass * GRAVITATIONAL_ACCELERATION;
 
         force[0] = force[0]/p.mass;
         force[1] = force[1]/p.mass;

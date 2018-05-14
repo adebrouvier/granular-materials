@@ -12,6 +12,7 @@ public class CliParser {
     static double time = 10;
     static double dt2 = 1;
     static double gamma = 0;
+    static String statsFile = "stats.txt";
 
     private static Options createOptions(){
         Options options = new Options();
@@ -22,6 +23,7 @@ public class CliParser {
         options.addOption("t", "time", true, "Total time of the simulation.");
         options.addOption("dt2", "deltatime2", true, "Time step for the animation.");
         options.addOption("g", "gamma", true, "Gamma constant value.");
+        options.addOption("sf", "stats", true, "Path to the file to output stats.");
         return options;
     }
 
@@ -61,6 +63,10 @@ public class CliParser {
 
             if (cmd.hasOption("g")) {
                 gamma = Double.parseDouble(cmd.getOptionValue("g"));
+            }
+
+            if (cmd.hasOption("sf")) {
+                statsFile = cmd.getOptionValue("sf");
             }
         }catch (Exception e){
             System.out.println("Command not recognized.");
