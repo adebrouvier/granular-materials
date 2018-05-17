@@ -3,6 +3,8 @@ package ar.edu.itba.ss;
 import java.io.FileNotFoundException;
 import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
+import java.util.HashMap;
+import java.util.Map;
 
 import static ar.edu.itba.ss.CliParser.gamma;
 
@@ -14,7 +16,8 @@ public class GranularMaterials {
     private final static double MASS = 0.01;
     private final static double KN = Math.pow(10, 4);
     private final static double GRAVITATIONAL_ACCELERATION = 9.8;
-    private static double exitParticles;
+    private static double dtExitParticles;
+    private static double totalExitParticles;
     private static CellIndexMethod cellIndexMethod;
 
     public static void main(String[] args) throws CloneNotSupportedException {
@@ -43,6 +46,9 @@ public class GranularMaterials {
             System.err.println("Could not write to stats file.");
         }
 
+        Map<Integer, Double> exitsPerDt = new HashMap<>();
+        double window = CliParser.dt2*5;
+
         for (double t = 0; t < CliParser.time; t+=dt){
 
             integrator.updatePositions(cellIndexMethod.particles);
@@ -55,19 +61,24 @@ public class GranularMaterials {
 
             updateCells();
 
-            if (dt2 % (CliParser.dt2*5) == 0){
-                double flow = exitParticles/(dt*CliParser.dt2*5);
-                double kineticEnergy = getKineticEnergy();
-                flowFile.println(flow + "\t" + kineticEnergy);
-                exitParticles = 0;
-            }
-
-            if (dt2++ % CliParser.dt2 == 0) {
+            if (++dt2 % CliParser.dt2 == 0) {
                 printParticles(iterations++);
+                exitsPerDt.put(dt2, dtExitParticles);
+                dtExitParticles = 0;
+                if (dt2 >= window) {
+                    printFlow(t, dt, window, flowFile);
+                    totalExitParticles -= exitsPerDt.get(dt2 + (int) CliParser.dt2 - (int) window);
+                }
             }
 
         }
         flowFile.close();
+    }
+
+    private static void printFlow(double t, double dt, double window, PrintWriter flowFile) {
+        double flow = totalExitParticles /(dt*window);
+        double kineticEnergy = getKineticEnergy();
+        flowFile.println(t + "\t" + flow + "\t" + kineticEnergy);
     }
 
     private static double getKineticEnergy() {
@@ -96,7 +107,8 @@ public class GranularMaterials {
             p.speed = new double[2];
             p.acceleration = new double[2];
             p.prevAcceleration = new double[2];
-            exitParticles++;
+            dtExitParticles++;
+            totalExitParticles++;
             return true;
         }
 
